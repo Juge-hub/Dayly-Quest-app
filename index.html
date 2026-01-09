@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quêtes & Badges</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="container">
+    <div class="top">
+      <div>
+        <h1>Quêtes</h1>
+        <p class="subtitle">Valide tes quêtes, gagne de l’XP, monte de badge.</p>
+      </div>
+
+      <button id="openAdd" class="btn primary">+ Ajouter une quête</button>
+    </div>
+
+    <section class="stats card">
+      <div class="stat">
+        <div class="label">Badge</div>
+        <div id="badgeName" class="value">Bronze</div>
+        <div id="badgeHint" class="hint">Niveau 1</div>
+      </div>
+
+      <div class="stat">
+        <div class="label">Niveau</div>
+        <div id="level" class="value">1</div>
+        <div class="hint">Plus tu fais de quêtes, plus tu montes.</div>
+      </div>
+
+      <div class="stat wide">
+        <div class="label">XP</div>
+        <div class="value"><span id="xp">0</span> XP</div>
+        <div class="progress">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <div class="hint"><span id="xpToNext">100</span> XP jusqu’au prochain niveau</div>
+      </div>
+    </section>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="section-head">
+        <h2>Quêtes du jour</h2>
+        <span id="dailyCount" class="pill">0</span>
+      </div>
+      <div id="dailyList" class="list"></div>
+      <div class="empty" id="dailyEmpty">Aucune quête du jour. Ajoute-en une 👇</div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Quêtes de la semaine</h2>
+        <span id="weeklyCount" class="pill">0</span>
+      </div>
+      <div id="weeklyList" class="list"></div>
+      <div class="empty" id="weeklyEmpty">Aucune quête de la semaine. Ajoute-en une 👇</div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Quêtes ponctuelles</h2>
+        <span id="oneCount" class="pill">0</span>
+      </div>
+      <div id="oneList" class="list"></div>
+      <div class="empty" id="oneEmpty">Aucune quête ponctuelle. Ajoute-en une 👇</div>
+    </section>
+
+    <section class="card danger">
+      <div class="section-head">
+        <h2>Outils</h2>
+      </div>
+      <div class="tools">
+        <button id="resetProgress" class="btn">Réinitialiser progression</button>
+        <button id="seedDemo" class="btn">Mettre des quêtes d’exemple</button>
+      </div>
+      <p class="hint">Réinitialiser efface XP + quêtes (irréversible).</p>
+    </section>
+  </main>
+
+  <!-- Modal Ajout -->
+  <dialog id="addModal" class="modal">
+    <form method="dialog" class="modal-card">
+      <div class="modal-head">
+        <h3>Ajouter une quête</h3>
+        <button id="closeAdd" class="icon-btn" aria-label="Fermer" value="cancel">✕</button>
+      </div>
+
+      <label class="field">
+        <span>Nom de la quête</span>
+        <input id="qTitle" type="text" placeholder="Ex: 10 min de marche" required />
+      </label>
+
+      <div class="grid2">
+        <label class="field">
+          <span>Type</span>
+          <select id="qType">
+            <option value="daily">Daily (chaque jour)</option>
+            <option value="weekly">Weekly (chaque semaine)</option>
+            <option value="one">Ponctuelle</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Difficulté</span>
+          <select id="qDiff">
+            <option value="easy">Facile (+10 XP)</option>
+            <option value="medium">Moyen (+25 XP)</option>
+            <option value="hard">Difficile (+50 XP)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" value="cancel">Annuler</button>
+        <button id="addQuest" class="btn primary" value="default">Ajouter</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
