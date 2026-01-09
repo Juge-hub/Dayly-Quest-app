@@ -1,8 +1,7 @@
 // =======================
-//  Quêtes & Badges - V1 + Login Google (sans cloud)
+//  Quêtes & Badges - Login Google + Cloud Sync (Firestore)
 // =======================
 
-// ---- Firebase (Login Google) ----
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getAuth,
@@ -12,7 +11,14 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 
-// ✅ Ton firebaseConfig (copié depuis Firebase)
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+// ✅ Ton firebaseConfig
 const firebaseConfig = {
   apiKey: "AIzaSyCaOP76xS-klowPBM9wDbYYQFArt0KMGd8",
   authDomain: "daily-quest-app-5d72a.firebaseapp.com",
@@ -25,9 +31,13 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
 const provider = new GoogleAuthProvider();
 
-// ---- App (XP / Quêtes) ----
+// =======================
+//  App (XP / Quêtes)
+// =======================
+
 const XP_BY_DIFF = { easy: 10, medium: 25, hard: 50 };
 
 const BADGE_TIERS = [
@@ -45,14 +55,14 @@ function xpNeededForNext(level) {
 
 const STORAGE_KEY = "quests_app_v1";
 
-function loadState() {
+function loadLocalState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
 
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function saveLocalState(s) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 }
 
 function uid() {
@@ -103,15 +113,58 @@ function defaultState() {
   };
 }
 
-let state = loadState() ?? defaultState();
+// État courant (on charge d’abord le local, puis on synchronise si connecté)
+let state = loadLocalState() ?? defaultState();
+let currentUser = null;
 
-// ---------- Reset logic ----------
+// =======================
+//  Cloud (Firestore) : charger / sauvegarder
+// =======================
+
+async function loadFromCloud(userId) {
+  const ref = doc(db, "users", userId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    // Si c'est le 1er login, on "monte" l'état local dans le cloud
+    await setDoc(ref, { state, updatedAt: Date.now() }, { merge: true });
+    toast("☁️ Première connexion : données envoyées sur le cloud");
+    return state;
+  }
+
+  const cloudState = snap.data()?.state;
+  return cloudState ?? defaultState();
+}
+
+let saveTimer = null;
+function saveToCloudDebounced() {
+  if (!currentUser) return;
+
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const ref = doc(db, "users", currentUser.uid);
+      await setDoc(ref, { state, updatedAt: Date.now() }, { merge: true });
+      // (optionnel) toast discret:
+      // toast("☁️ Sauvegardé");
+    } catch (e) {
+      console.error("Erreur sauvegarde cloud:", e);
+      toast("⚠️ Sauvegarde cloud impossible (voir console)");
+    }
+  }, 400);
+}
+
+// =======================
+//  Reset logic
+// =======================
+
 function applyResets() {
   const tKey = todayKey();
   if (state.lastDailyReset !== tKey) {
     for (const q of state.quests) if (q.type === "daily") q.done = false;
     state.lastDailyReset = tKey;
   }
+
   const wKey = weekKey();
   if (state.lastWeeklyReset !== wKey) {
     for (const q of state.quests) if (q.type === "weekly") q.done = false;
@@ -119,7 +172,10 @@ function applyResets() {
   }
 }
 
-// ---------- Leveling ----------
+// =======================
+//  Leveling
+// =======================
+
 function addXp(amount) {
   state.xp += amount;
 
@@ -135,7 +191,10 @@ function addXp(amount) {
   }
 }
 
-// ---------- DOM ----------
+// =======================
+//  DOM
+// =======================
+
 const el = (id) => document.getElementById(id);
 
 const dailyList = el("dailyList");
@@ -175,7 +234,10 @@ const userLabel = el("userLabel");
 const loginBtn = el("loginBtn");
 const logoutBtn = el("logoutBtn");
 
-// ---------- Render ----------
+// =======================
+//  Render
+// =======================
+
 function renderStats() {
   badgeName.textContent = getBadgeForLevel(state.level);
   badgeHint.textContent = `Niveau ${state.level}`;
@@ -285,26 +347,31 @@ function renderLists() {
   for (const q of o) oneList.appendChild(questItem(q));
 }
 
-function renderAll() {
-  applyResets();
-  saveState(state);
-  renderStats();
-  renderLists();
+function persistAndMaybeCloud() {
+  saveLocalState(state);
+  saveToCloudDebounced();
 }
 
-// ---------- Actions ----------
+function renderAll() {
+  applyResets();
+  renderStats();
+  renderLists();
+  persistAndMaybeCloud();
+}
+
+// =======================
+//  Actions
+// =======================
+
 function addQuest() {
   const title = (qTitle.value || "").trim();
   if (!title) return;
 
-  const type = qType.value;
-  const diff = qDiff.value;
-
   state.quests.unshift({
     id: uid(),
     title,
-    type,
-    diff,
+    type: qType.value,
+    diff: qDiff.value,
     done: false,
     createdAt: Date.now(),
   });
@@ -312,9 +379,8 @@ function addQuest() {
   qTitle.value = "";
   addModal.close();
 
-  saveState(state);
-  renderAll();
   toast("✅ Quête ajoutée !");
+  renderAll();
 }
 
 function toggleDone(id) {
@@ -326,19 +392,16 @@ function toggleDone(id) {
   if (!q.done) {
     q.done = true;
     addXp(xpGain);
-    saveState(state);
-    renderAll();
   } else {
     q.done = false;
     toast("↩️ Quête dévalidée (XP non retirée)");
-    saveState(state);
-    renderAll();
   }
+
+  renderAll();
 }
 
 function removeQuest(id) {
   state.quests = state.quests.filter(q => q.id !== id);
-  saveState(state);
   renderAll();
 }
 
@@ -347,9 +410,8 @@ function resetProgress() {
   if (!ok) return;
 
   state = defaultState();
-  saveState(state);
-  renderAll();
   toast("🧹 Progression réinitialisée.");
+  renderAll();
 }
 
 function seedDemo() {
@@ -372,12 +434,14 @@ function seedDemo() {
     });
   }
 
-  saveState(state);
-  renderAll();
   toast("✨ Quêtes d’exemple ajoutées !");
+  renderAll();
 }
 
-// ---------- Tiny toast ----------
+// =======================
+//  Toast
+// =======================
+
 let toastTimer = null;
 function toast(message) {
   let node = document.getElementById("toast");
@@ -404,12 +468,13 @@ function toast(message) {
   node.style.opacity = "1";
 
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    node.style.opacity = "0";
-  }, 1800);
+  toastTimer = setTimeout(() => (node.style.opacity = "0"), 1800);
 }
 
-// ---------- Events ----------
+// =======================
+//  Events UI
+// =======================
+
 openAdd.addEventListener("click", () => {
   addModal.showModal();
   qTitle.focus();
@@ -424,7 +489,10 @@ addQuestBtn.addEventListener("click", (e) => {
 resetProgressBtn.addEventListener("click", resetProgress);
 seedDemoBtn.addEventListener("click", seedDemo);
 
-// ---- Auth Events ----
+// =======================
+//  Auth events
+// =======================
+
 logoutBtn.style.display = "none";
 
 loginBtn.addEventListener("click", async () => {
@@ -445,20 +513,42 @@ logoutBtn.addEventListener("click", async () => {
   }
 });
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    userLabel.textContent = `Connecté : ${user.displayName}`;
-    loginBtn.style.display = "none";
-    logoutBtn.style.display = "inline-block";
-    toast("✅ Connecté !");
-  } else {
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+
+  if (!user) {
     userLabel.textContent = "Non connecté";
     loginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
-    toast("ℹ️ Déconnecté");
+
+    // On reste en local
+    renderAll();
+    return;
+  }
+
+  userLabel.textContent = `Connecté : ${user.displayName ?? "Utilisateur"}`;
+  loginBtn.style.display = "none";
+  logoutBtn.style.display = "inline-block";
+
+  // 🔥 Charger depuis le cloud (ou créer 1ère fois)
+  try {
+    const cloudState = await loadFromCloud(user.uid);
+
+    // On remplace l'état local par le cloud (source de vérité)
+    state = cloudState ?? defaultState();
+
+    // On écrit aussi en local pour que ça marche même hors ligne
+    saveLocalState(state);
+
+    toast("☁️ Données synchronisées !");
+    renderAll();
+  } catch (e) {
+    console.error("Erreur chargement cloud:", e);
+    toast("⚠️ Impossible de charger le cloud (voir console)");
+    renderAll();
   }
 });
 
-// ---------- Start ----------
+// Start
 renderAll();
 
