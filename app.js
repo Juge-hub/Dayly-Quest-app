@@ -635,4 +635,5 @@ installBtn?.addEventListener("click", async () => {
 
   deferredPrompt = null;
   installBtn.style.display = "none";
-});
+});}
+
