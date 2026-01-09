@@ -15,7 +15,13 @@
         <p class="subtitle">Valide tes quêtes, gagne de l’XP, monte de badge.</p>
       </div>
 
-      <button id="openAdd" class="btn primary">+ Ajouter une quête</button>
+      <!-- ✅ Bloc Connexion -->
+      <div class="auth">
+        <span id="userLabel" class="pill">Non connecté</span>
+        <button id="loginBtn" class="btn primary">Se connecter</button>
+        <button id="logoutBtn" class="btn">Se déconnecter</button>
+        <button id="openAdd" class="btn primary">+ Ajouter une quête</button>
+      </div>
     </div>
 
     <section class="stats card">
@@ -79,6 +85,7 @@
         <button id="seedDemo" class="btn">Mettre des quêtes d’exemple</button>
       </div>
       <p class="hint">Réinitialiser efface XP + quêtes (irréversible).</p>
+      <p class="hint">⚠️ Login : pour l’instant c’est juste connexion/déconnexion (pas encore de sauvegarde cloud).</p>
     </section>
   </main>
 
@@ -122,6 +129,8 @@
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <!-- ✅ IMPORTANT : app.js est maintenant un module (pour Firebase) -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
+
