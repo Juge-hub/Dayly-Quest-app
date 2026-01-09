@@ -551,4 +551,5 @@ onAuthStateChanged(auth, async (user) => {
 
 // Start
 renderAll();
+console.log("🔥 app.js est bien chargé");
 
