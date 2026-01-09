@@ -24,24 +24,34 @@
         <button id="loginBtn" class="btn primary">Se connecter</button>
         <button id="logoutBtn" class="btn">Se déconnecter</button>
         <button id="openAdd" class="btn primary">+ Ajouter une quête</button>
+
         <button id="installBtn" class="btn primary" style="display:none;">
-  📲 Installer l’application
-</button>
+          📲 Installer l’application
+        </button>
       </div>
     </div>
 
+    <!-- ✅ STATS (corrigé) -->
     <section class="stats card">
-    <div class="stat">
-  <div class="label">Badge</div>
+      <div class="stat">
+        <div class="label">Badge</div>
 
-  <div class="badge-wrap">
-    <img id="badgeImg" class="badge-img" src="bronze.png" alt="Badge">
-    <div>
-      <div id="badgeName" class="value">Bronze</div>
-      <div id="badgeHint" class="hint">Niveau 1</div>
-    </div>
-  </div>
-</div>
+        <div class="badge-wrap">
+          <img id="badgeImg" class="badge-img" src="bronze.png" alt="Badge">
+          <div>
+            <div id="badgeName" class="value">Bronze</div>
+            <div id="badgeHint" class="hint">Niveau 1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ IMPORTANT : ce bloc était manquant -->
+      <div class="stat">
+        <div class="label">Niveau</div>
+        <div id="level" class="value">1</div>
+        <div class="hint">Plus tu fais de quêtes, plus tu montes.</div>
+      </div>
+
       <div class="stat wide">
         <div class="label">XP</div>
         <div class="value"><span id="xp">0</span> XP</div>
@@ -134,10 +144,10 @@
     </form>
   </dialog>
 
-  <!-- ✅ IMPORTANT : app.js est maintenant un module (pour Firebase) -->
- <script type="module" src="app.js"></script>
+  <!-- ✅ IMPORTANT : app.js est maintenant un module -->
+  <script type="module" src="app.js"></script>
 
-  <!-- ✅ PWA: Enregistrement du Service Worker (à la fin du body) -->
+  <!-- ✅ PWA: Service Worker -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -150,8 +160,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
