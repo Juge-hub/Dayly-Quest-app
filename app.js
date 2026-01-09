@@ -1,3 +1,4 @@
+console.log("🔥 app.js est bien chargé");
 // =======================
 //  Quêtes & Badges - Login Google + Cloud Sync (Firestore)
 // =======================
@@ -549,7 +550,5 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Start
-renderAll();
-console.log("🔥 app.js est bien chargé");
+
 
