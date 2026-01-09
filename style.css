@@ -256,5 +256,18 @@ input, select{
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+.badge-wrap{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.badge-img{
+  width:54px;
+  height:54px;
+  object-fit:contain;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,.45));
+}
+
 
 
