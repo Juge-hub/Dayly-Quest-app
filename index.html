@@ -9,7 +9,7 @@
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1026">
-</head>  
+</head>
 <body>
   <header class="container">
     <div class="top">
@@ -133,7 +133,19 @@
   </dialog>
 
   <!-- ✅ IMPORTANT : app.js est maintenant un module (pour Firebase) -->
-  <script type="module" src="app.js"></script>
+ <script type="module" src="app.js"></script>
+
+  <!-- ✅ PWA: Enregistrement du Service Worker (à la fin du body) -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("sw.js")
+          .then(reg => console.log("✅ Service Worker enregistré :", reg))
+          .catch(err => console.error("❌ Erreur Service Worker :", err));
+      });
+    }
+  </script>
 </body>
 </html>
 
