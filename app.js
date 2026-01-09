@@ -52,6 +52,14 @@ const BADGE_TIERS = [
   { minLevel: 25, name: "Champion" },
   { minLevel: 40, name: "Maître" },
 ];
+const BADGE_IMAGES = {
+  "Bronze": "bronze.png",
+  "Argent": "argent.png",
+  "Or": "or.png",
+  "Diamant": "diamant.png",
+  "Champion": "champion.png",
+  "Maître": "maitre.png",
+};
 
 function xpNeededForNext(level) {
   return Math.floor(100 + (level - 1) * 30);
@@ -263,6 +271,7 @@ const oneEmpty = el("oneEmpty");
 
 const badgeName = el("badgeName");
 const badgeHint = el("badgeHint");
+const badgeImg = el("badgeImg");
 const levelEl = el("level");
 const xpEl = el("xp");
 const xpToNextEl = el("xpToNext");
@@ -298,11 +307,19 @@ const installBtn = el("installBtn");
 // =======================
 
 function renderStats() {
-  badgeName.textContent = getBadgeForLevel(state.level);
+  const badge = getBadgeForLevel(state.level);
+
+  badgeName.textContent = badge;
   badgeHint.textContent = `Niveau ${state.level}`;
+
+  if (badgeImg) {
+    badgeImg.src = BADGE_IMAGES[badge] || "bronze.png";
+    badgeImg.alt = `Badge ${badge}`;
+  }
 
   levelEl.textContent = String(state.level);
   xpEl.textContent = String(state.xp);
+
 
   const needed = xpNeededForNext(state.level);
   const remaining = Math.max(0, needed - state.xp);
@@ -631,3 +648,4 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
+
