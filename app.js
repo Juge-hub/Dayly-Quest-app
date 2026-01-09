@@ -1,6 +1,9 @@
 console.log("🔥 app.js est bien chargé");
+
 // =======================
 //  Quêtes & Badges - Login Google + Cloud Sync (Firestore)
+//  + Blocage actions si non connecté
+//  + Bouton installer (PWA)
 // =======================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
@@ -19,7 +22,7 @@ import {
   setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-// ✅ Ton firebaseConfig
+// ✅ Ton firebaseConfig (UNIQUE, pas de doublon)
 const firebaseConfig = {
   apiKey: "AIzaSyCaOP76xS-klowPBM9wDbYYQFArt0KMGd8",
   authDomain: "daily-quest-app-5d72a.firebaseapp.com",
@@ -114,9 +117,64 @@ function defaultState() {
   };
 }
 
-// État courant (on charge d’abord le local, puis on synchronise si connecté)
+// État courant (local d’abord)
 let state = loadLocalState() ?? defaultState();
+
+// ✅ utilisateur courant
 let currentUser = null;
+
+// =======================
+//  Toast
+// =======================
+
+let toastTimer = null;
+function toast(message) {
+  let node = document.getElementById("toast");
+  if (!node) {
+    node = document.createElement("div");
+    node.id = "toast";
+    node.style.position = "fixed";
+    node.style.left = "50%";
+    node.style.bottom = "18px";
+    node.style.transform = "translateX(-50%)";
+    node.style.padding = "10px 12px";
+    node.style.borderRadius = "12px";
+    node.style.border = "1px solid rgba(255,255,255,0.10)";
+    node.style.background = "rgba(15, 22, 48, 0.92)";
+    node.style.color = "white";
+    node.style.boxShadow = "0 12px 30px rgba(0,0,0,0.35)";
+    node.style.fontWeight = "650";
+    node.style.zIndex = "9999";
+    node.style.maxWidth = "92vw";
+    node.style.textAlign = "center";
+    document.body.appendChild(node);
+  }
+  node.textContent = message;
+  node.style.opacity = "1";
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (node.style.opacity = "0"), 1800);
+}
+
+// =======================
+//  Blocage actions si non connecté
+// =======================
+
+function requireAuth(message = "🔒 Connecte-toi pour faire ça.") {
+  if (!currentUser) {
+    toast(message);
+    return false;
+  }
+  return true;
+}
+
+function setUIEnabled(connected) {
+  // boutons principaux
+  if (openAdd) openAdd.disabled = !connected;
+  if (addQuestBtn) addQuestBtn.disabled = !connected;
+  if (resetProgressBtn) resetProgressBtn.disabled = !connected;
+  if (seedDemoBtn) seedDemoBtn.disabled = !connected;
+}
 
 // =======================
 //  Cloud (Firestore) : charger / sauvegarder
@@ -127,7 +185,6 @@ async function loadFromCloud(userId) {
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
-    // Si c'est le 1er login, on "monte" l'état local dans le cloud
     await setDoc(ref, { state, updatedAt: Date.now() }, { merge: true });
     toast("☁️ Première connexion : données envoyées sur le cloud");
     return state;
@@ -146,8 +203,6 @@ function saveToCloudDebounced() {
     try {
       const ref = doc(db, "users", currentUser.uid);
       await setDoc(ref, { state, updatedAt: Date.now() }, { merge: true });
-      // (optionnel) toast discret:
-      // toast("☁️ Sauvegardé");
     } catch (e) {
       console.error("Erreur sauvegarde cloud:", e);
       toast("⚠️ Sauvegarde cloud impossible (voir console)");
@@ -235,6 +290,9 @@ const userLabel = el("userLabel");
 const loginBtn = el("loginBtn");
 const logoutBtn = el("logoutBtn");
 
+// Install UI (PWA)
+const installBtn = el("installBtn");
+
 // =======================
 //  Render
 // =======================
@@ -310,12 +368,20 @@ function questItem(q) {
   const doneBtn = document.createElement("button");
   doneBtn.className = "small-btn done";
   doneBtn.textContent = q.done ? "Annuler" : "Valider";
-  doneBtn.addEventListener("click", () => toggleDone(q.id));
+  doneBtn.disabled = !currentUser; // 🔒 bloqué si non connecté
+  doneBtn.addEventListener("click", () => {
+    if (!requireAuth("🔒 Connecte-toi pour valider une quête.")) return;
+    toggleDone(q.id);
+  });
 
   const delBtn = document.createElement("button");
   delBtn.className = "small-btn del";
   delBtn.textContent = "Supprimer";
-  delBtn.addEventListener("click", () => removeQuest(q.id));
+  delBtn.disabled = !currentUser; // 🔒 bloqué si non connecté
+  delBtn.addEventListener("click", () => {
+    if (!requireAuth("🔒 Connecte-toi pour supprimer une quête.")) return;
+    removeQuest(q.id);
+  });
 
   right.appendChild(doneBtn);
   right.appendChild(delBtn);
@@ -365,6 +431,8 @@ function renderAll() {
 // =======================
 
 function addQuest() {
+  if (!requireAuth("🔒 Connecte-toi pour ajouter une quête.")) return;
+
   const title = (qTitle.value || "").trim();
   if (!title) return;
 
@@ -385,6 +453,8 @@ function addQuest() {
 }
 
 function toggleDone(id) {
+  if (!requireAuth("🔒 Connecte-toi pour valider une quête.")) return;
+
   const q = state.quests.find(x => x.id === id);
   if (!q) return;
 
@@ -402,11 +472,15 @@ function toggleDone(id) {
 }
 
 function removeQuest(id) {
+  if (!requireAuth("🔒 Connecte-toi pour supprimer une quête.")) return;
+
   state.quests = state.quests.filter(q => q.id !== id);
   renderAll();
 }
 
 function resetProgress() {
+  if (!requireAuth("🔒 Connecte-toi pour modifier ta progression.")) return;
+
   const ok = confirm("Tout effacer (XP + niveaux + quêtes) ?\nC’est irréversible.");
   if (!ok) return;
 
@@ -416,6 +490,8 @@ function resetProgress() {
 }
 
 function seedDemo() {
+  if (!requireAuth("🔒 Connecte-toi pour ajouter des quêtes d’exemple.")) return;
+
   const examples = [
     { title: "Boire 2 verres d’eau", type: "daily", diff: "easy" },
     { title: "10 min de marche", type: "daily", diff: "medium" },
@@ -440,63 +516,32 @@ function seedDemo() {
 }
 
 // =======================
-//  Toast
-// =======================
-
-let toastTimer = null;
-function toast(message) {
-  let node = document.getElementById("toast");
-  if (!node) {
-    node = document.createElement("div");
-    node.id = "toast";
-    node.style.position = "fixed";
-    node.style.left = "50%";
-    node.style.bottom = "18px";
-    node.style.transform = "translateX(-50%)";
-    node.style.padding = "10px 12px";
-    node.style.borderRadius = "12px";
-    node.style.border = "1px solid rgba(255,255,255,0.10)";
-    node.style.background = "rgba(15, 22, 48, 0.92)";
-    node.style.color = "white";
-    node.style.boxShadow = "0 12px 30px rgba(0,0,0,0.35)";
-    node.style.fontWeight = "650";
-    node.style.zIndex = "9999";
-    node.style.maxWidth = "92vw";
-    node.style.textAlign = "center";
-    document.body.appendChild(node);
-  }
-  node.textContent = message;
-  node.style.opacity = "1";
-
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (node.style.opacity = "0"), 1800);
-}
-
-// =======================
 //  Events UI
 // =======================
 
-openAdd.addEventListener("click", () => {
+openAdd?.addEventListener("click", () => {
+  if (!requireAuth("🔒 Connecte-toi pour ajouter une quête.")) return;
   addModal.showModal();
   qTitle.focus();
 });
-closeAdd.addEventListener("click", () => addModal.close());
 
-addQuestBtn.addEventListener("click", (e) => {
+closeAdd?.addEventListener("click", () => addModal.close());
+
+addQuestBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   addQuest();
 });
 
-resetProgressBtn.addEventListener("click", resetProgress);
-seedDemoBtn.addEventListener("click", seedDemo);
+resetProgressBtn?.addEventListener("click", resetProgress);
+seedDemoBtn?.addEventListener("click", seedDemo);
 
 // =======================
 //  Auth events
 // =======================
 
-logoutBtn.style.display = "none";
+if (logoutBtn) logoutBtn.style.display = "none";
 
-loginBtn.addEventListener("click", async () => {
+loginBtn?.addEventListener("click", async () => {
   try {
     await signInWithPopup(auth, provider);
   } catch (e) {
@@ -505,7 +550,7 @@ loginBtn.addEventListener("click", async () => {
   }
 });
 
-logoutBtn.addEventListener("click", async () => {
+logoutBtn?.addEventListener("click", async () => {
   try {
     await signOut(auth);
   } catch (e) {
@@ -515,32 +560,33 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
+  currentUser = user || null;
 
-  if (!user) {
+  if (!currentUser) {
     userLabel.textContent = "Non connecté";
     loginBtn.style.display = "inline-block";
     logoutBtn.style.display = "none";
 
-    // On reste en local
+    // 🔒 UI bloquée
+    setUIEnabled(false);
+
+    // Option : garder l’affichage local (lecture OK) mais actions bloquées
     renderAll();
     return;
   }
 
-  userLabel.textContent = `Connecté : ${user.displayName ?? "Utilisateur"}`;
+  userLabel.textContent = `Connecté : ${currentUser.displayName ?? "Utilisateur"}`;
   loginBtn.style.display = "none";
   logoutBtn.style.display = "inline-block";
 
-  // 🔥 Charger depuis le cloud (ou créer 1ère fois)
+  // ✅ UI débloquée
+  setUIEnabled(true);
+
+  // Charger depuis le cloud
   try {
-    const cloudState = await loadFromCloud(user.uid);
-
-    // On remplace l'état local par le cloud (source de vérité)
+    const cloudState = await loadFromCloud(currentUser.uid);
     state = cloudState ?? defaultState();
-
-    // On écrit aussi en local pour que ça marche même hors ligne
     saveLocalState(state);
-
     toast("☁️ Données synchronisées !");
     renderAll();
   } catch (e) {
@@ -549,33 +595,44 @@ onAuthStateChanged(auth, async (user) => {
     renderAll();
   }
 });
-// --- PWA Installation ---
-let deferredPrompt;
-const installBtn = document.getElementById("installBtn");
+
+// Start
+renderAll();
+
+// =======================
+//  PWA Installation (Bouton Installer)
+// =======================
+
+let deferredPrompt = null;
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  installBtn.style.display = "inline-block"; // Affiche le bouton
+  if (installBtn) installBtn.style.display = "inline-block";
 });
 
-installBtn.addEventListener("click", async () => {
-  if (!deferredPrompt) return;
+installBtn?.addEventListener("click", async () => {
+  if (!deferredPrompt) {
+    toast("ℹ️ Installation non disponible sur ce navigateur.");
+    return;
+  }
 
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
 
   if (outcome === "accepted") {
     console.log("✅ Application installée");
+    toast("✅ Application installée !");
   } else {
     console.log("❌ Installation refusée");
+    toast("❌ Installation refusée");
   }
+
+  deferredPrompt = null;
+  if (installBtn) installBtn.style.display = "none";
+});
+
 
   deferredPrompt = null;
   installBtn.style.display = "none";
 });
-
-
-
-
-
