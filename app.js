@@ -1,16 +1,35 @@
 // =======================
-//  Quêtes & Badges - V1
+//  Quêtes & Badges - V1 + Login Google (sans cloud)
 // =======================
 
-// XP par difficulté
-const XP_BY_DIFF = {
-  easy: 10,
-  medium: 25,
-  hard: 50,
+// ---- Firebase (Login Google) ----
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+
+// ✅ Ton firebaseConfig (copié depuis Firebase)
+const firebaseConfig = {
+  apiKey: "AIzaSyCaOP76xS-klowPBM9wDbYYQFArt0KMGd8",
+  authDomain: "daily-quest-app-5d72a.firebaseapp.com",
+  projectId: "daily-quest-app-5d72a",
+  storageBucket: "daily-quest-app-5d72a.firebasestorage.app",
+  messagingSenderId: "113658966678",
+  appId: "1:113658966678:web:3c24e1de2dc1f7ed4e88b7",
+  measurementId: "G-X54B7TE7E8"
 };
 
-// Badges par tranche de niveau
-// (Tu peux changer ces noms quand tu veux)
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const provider = new GoogleAuthProvider();
+
+// ---- App (XP / Quêtes) ----
+const XP_BY_DIFF = { easy: 10, medium: 25, hard: 50 };
+
 const BADGE_TIERS = [
   { minLevel: 1,  name: "Bronze" },
   { minLevel: 5,  name: "Argent" },
@@ -20,13 +39,10 @@ const BADGE_TIERS = [
   { minLevel: 40, name: "Maître" },
 ];
 
-// Courbe XP: XP nécessaire pour passer au niveau suivant
-// Ici : plus tu montes, plus ça demande (simple et efficace)
 function xpNeededForNext(level) {
   return Math.floor(100 + (level - 1) * 30);
 }
 
-// ---------- Storage ----------
 const STORAGE_KEY = "quests_app_v1";
 
 function loadState() {
@@ -39,13 +55,11 @@ function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// ---------- Util ----------
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
 function todayKey(d = new Date()) {
-  // YYYY-MM-DD (local)
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -53,8 +67,6 @@ function todayKey(d = new Date()) {
 }
 
 function weekKey(d = new Date()) {
-  // clé "YYYY-Www" (semaine ISO simplifiée)
-  // On fait un calcul ISO simple
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = date.getUTCDay() || 7;
   date.setUTCDate(date.getUTCDate() + 4 - dayNum);
@@ -77,18 +89,15 @@ function typeLabel(type) {
 
 function getBadgeForLevel(level) {
   let badge = BADGE_TIERS[0].name;
-  for (const t of BADGE_TIERS) {
-    if (level >= t.minLevel) badge = t.name;
-  }
+  for (const t of BADGE_TIERS) if (level >= t.minLevel) badge = t.name;
   return badge;
 }
 
-// ---------- State init ----------
 function defaultState() {
   return {
     xp: 0,
     level: 1,
-    quests: [], // {id,title,type,diff,done:boolean,lastDoneDay,lastDoneWeek,createdAt}
+    quests: [],
     lastDailyReset: todayKey(),
     lastWeeklyReset: weekKey(),
   };
@@ -100,18 +109,12 @@ let state = loadState() ?? defaultState();
 function applyResets() {
   const tKey = todayKey();
   if (state.lastDailyReset !== tKey) {
-    // reset done sur les daily (et sur one-shot? non)
-    for (const q of state.quests) {
-      if (q.type === "daily") q.done = false;
-    }
+    for (const q of state.quests) if (q.type === "daily") q.done = false;
     state.lastDailyReset = tKey;
   }
-
   const wKey = weekKey();
   if (state.lastWeeklyReset !== wKey) {
-    for (const q of state.quests) {
-      if (q.type === "weekly") q.done = false;
-    }
+    for (const q of state.quests) if (q.type === "weekly") q.done = false;
     state.lastWeeklyReset = wKey;
   }
 }
@@ -120,13 +123,11 @@ function applyResets() {
 function addXp(amount) {
   state.xp += amount;
 
-  // boucler tant qu'on peut level up
   while (true) {
     const needed = xpNeededForNext(state.level);
     if (state.xp >= needed) {
       state.xp -= needed;
       state.level += 1;
-      // petit feedback sympa
       toast(`🎉 Niveau ${state.level} ! Badge: ${getBadgeForLevel(state.level)}`);
     } else {
       break;
@@ -168,6 +169,11 @@ const addQuestBtn = el("addQuest");
 // Tools
 const resetProgressBtn = el("resetProgress");
 const seedDemoBtn = el("seedDemo");
+
+// Auth UI
+const userLabel = el("userLabel");
+const loginBtn = el("loginBtn");
+const logoutBtn = el("logoutBtn");
 
 // ---------- Render ----------
 function renderStats() {
@@ -241,7 +247,6 @@ function questItem(q) {
   const doneBtn = document.createElement("button");
   doneBtn.className = "small-btn done";
   doneBtn.textContent = q.done ? "Annuler" : "Valider";
-
   doneBtn.addEventListener("click", () => toggleDone(q.id));
 
   const delBtn = document.createElement("button");
@@ -318,19 +323,14 @@ function toggleDone(id) {
 
   const xpGain = XP_BY_DIFF[q.diff] ?? 10;
 
-  // Si on valide, on donne XP. Si on annule, on retire XP (simple).
-  // Attention: retirer peut faire descendre un niveau -> on évite en V1 (trop complexe).
   if (!q.done) {
     q.done = true;
-
-    // one-shot: si validée, on peut la supprimer auto (au choix).
-    // Ici: on la garde cochée, et tu peux la supprimer toi-même.
     addXp(xpGain);
     saveState(state);
     renderAll();
   } else {
     q.done = false;
-    toast("↩️ Quête dévalidée (XP non retirée en V1)");
+    toast("↩️ Quête dévalidée (XP non retirée)");
     saveState(state);
     renderAll();
   }
@@ -353,7 +353,6 @@ function resetProgress() {
 }
 
 function seedDemo() {
-  // Ajoute quelques quêtes exemple
   const examples = [
     { title: "Boire 2 verres d’eau", type: "daily", diff: "easy" },
     { title: "10 min de marche", type: "daily", diff: "medium" },
@@ -425,5 +424,41 @@ addQuestBtn.addEventListener("click", (e) => {
 resetProgressBtn.addEventListener("click", resetProgress);
 seedDemoBtn.addEventListener("click", seedDemo);
 
+// ---- Auth Events ----
+logoutBtn.style.display = "none";
+
+loginBtn.addEventListener("click", async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    console.error(e);
+    toast("⚠️ Connexion impossible (popup bloquée ?)");
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.error(e);
+    toast("⚠️ Déconnexion impossible");
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    userLabel.textContent = `Connecté : ${user.displayName}`;
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+    toast("✅ Connecté !");
+  } else {
+    userLabel.textContent = "Non connecté";
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
+    toast("ℹ️ Déconnecté");
+  }
+});
+
 // ---------- Start ----------
 renderAll();
+
