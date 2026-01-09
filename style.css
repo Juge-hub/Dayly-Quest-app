@@ -202,7 +202,7 @@ h2{ margin:0; font-size: 18px; }
   justify-content:space-between;
   margin-bottom: 10px;
 }
-h3{ margin:0; }
+h3{ margin:0; color:var(--text); }
 .icon-btn{
   border:1px solid var(--border);
   background: rgba(255,255,255,0.03);
@@ -256,4 +256,5 @@ input, select{
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
 
