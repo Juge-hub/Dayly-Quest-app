@@ -853,10 +853,7 @@ installBtn?.addEventListener("click", async () => {
     toast("❌ Installation refusée");
   }
 
-  deferredPrompt = null;
-  if (installBtn) installBtn.style.display = "none";
-});
-}
+
 
 
 
