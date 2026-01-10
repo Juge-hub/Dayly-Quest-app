@@ -759,7 +759,6 @@ addQuestBtn?.addEventListener("click", (e) => {
 
 resetProgressBtn?.addEventListener("click", resetProgress);
 seedDemoBtn?.addEventListener("click", seedDemo);
-
 // =======================
 //  Auth events
 // =======================
@@ -795,7 +794,6 @@ onAuthStateChanged(auth, async (user) => {
     // 🔒 UI bloquée
     setUIEnabled(false);
 
-    // Option : garder l’affichage local (lecture OK) mais actions bloquées
     renderAll();
     return;
   }
@@ -821,48 +819,10 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Start
-renderAll();
-
 // =======================
-//  PWA Installation (Bouton Installer)
+//  Start
 // =======================
 
-let deferredPrompt = null;
-
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  if (installBtn) installBtn.style.display = "inline-block";
-});
-
-installBtn?.addEventListener("click", async () => {
-  if (!deferredPrompt) {
-    toast("ℹ️ Installation non disponible sur ce navigateur.");
-    return;
-  }
-
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-
-  if (outcome === "accepted") {
-    console.log("✅ Application installée");
-    toast("✅ Application installée !");
-  // Charger depuis le cloud
-  try {
-    const cloudState = await loadFromCloud(currentUser.uid);
-    state = cloudState ?? defaultState();
-    saveLocalState(state);
-    toast("☁️ Données synchronisées !");
-    renderAll();
-  } catch (e) {
-    console.error("Erreur chargement cloud:", e);
-    toast("⚠️ Impossible de charger le cloud (voir console)");
-    renderAll();
-  }
-});
-
-// Start
 renderAll();
 
 // =======================
@@ -915,5 +875,3 @@ if (badgeImg) {
   badgeImg.classList.add("level-up");
   setTimeout(() => badgeImg.classList.remove("level-up"), 300);
 }
-
-
