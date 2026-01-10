@@ -127,6 +127,72 @@
       </label>
 
       <div class="grid2">
+        <!-- ✅ Rappels -->
+<div class="field">
+  <span>Rappels</span>
+
+  <!-- Daily -->
+  <div id="reminderDaily" class="reminder-box">
+    <div class="hint">Daily : choisis jusqu’à 4 heures (format 09:00)</div>
+    <div class="grid2">
+      <label class="field">
+        <span>Heure 1</span>
+        <input id="dailyTime1" type="time" value="09:00" />
+      </label>
+      <label class="field">
+        <span>Heure 2</span>
+        <input id="dailyTime2" type="time" value="13:00" />
+      </label>
+    </div>
+    <div class="grid2">
+      <label class="field">
+        <span>Heure 3</span>
+        <input id="dailyTime3" type="time" value="18:00" />
+      </label>
+      <label class="field">
+        <span>Heure 4</span>
+        <input id="dailyTime4" type="time" value="21:00" />
+      </label>
+    </div>
+  </div>
+
+  <!-- Weekly -->
+  <div id="reminderWeekly" class="reminder-box" style="display:none;">
+    <div class="hint">Weekly : choisis les jours + une heure</div>
+
+    <div class="days">
+      <label><input type="checkbox" class="wday" value="1"> Lun</label>
+      <label><input type="checkbox" class="wday" value="2"> Mar</label>
+      <label><input type="checkbox" class="wday" value="3"> Mer</label>
+      <label><input type="checkbox" class="wday" value="4"> Jeu</label>
+      <label><input type="checkbox" class="wday" value="5"> Ven</label>
+      <label><input type="checkbox" class="wday" value="6"> Sam</label>
+      <label><input type="checkbox" class="wday" value="7"> Dim</label>
+    </div>
+
+    <label class="field">
+      <span>Heure</span>
+      <input id="weeklyTime" type="time" value="18:00" />
+    </label>
+  </div>
+
+  <!-- One -->
+  <div id="reminderOne" class="reminder-box" style="display:none;">
+    <div class="hint">Ponctuelle : choisis une date + une heure</div>
+
+    <div class="grid2">
+      <label class="field">
+        <span>Date</span>
+        <input id="oneDate" type="date" />
+      </label>
+      <label class="field">
+        <span>Heure</span>
+        <input id="oneTime" type="time" value="09:00" />
+      </label>
+    </div>
+  </div>
+</div>
+
         <label class="field">
           <span>Type</span>
           <select id="qType">
@@ -169,4 +235,5 @@
   </script>
 </body>
 </html>
+
 
