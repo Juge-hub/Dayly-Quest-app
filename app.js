@@ -852,11 +852,3 @@ installBtn?.addEventListener("click", async () => {
     console.log("❌ Installation refusée");
     toast("❌ Installation refusée");
   }
-
-
-
-
-
-
-
-
