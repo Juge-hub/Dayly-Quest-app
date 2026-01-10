@@ -331,6 +331,20 @@ const installBtn = el("installBtn");
 // =======================
 //  Render
 // =======================
+function updateReminderUI() {
+  const type = qType.value;
+
+  reminderDaily.style.display = (type === "daily") ? "block" : "none";
+  reminderWeekly.style.display = (type === "weekly") ? "block" : "none";
+  reminderOne.style.display = (type === "one") ? "block" : "none";
+
+  // date par défaut pour "one"
+  if (type === "one" && oneDate && !oneDate.value) {
+    oneDate.value = todayKey();
+  }
+}
+
+qType.addEventListener("change", updateReminderUI);
 
 function renderStats() {
   const badge = getBadgeForLevel(state.level);
@@ -630,53 +644,36 @@ function addQuest() {
   if (!title) return;
 
   const type = qType.value;
-
-  // 🧠 Modélisation des rappels selon le type
-  let reminders = { enabled: false };
+  // 🧠 Récupération des rappels depuis le formulaire
+  let reminders = { enabled: true };
   let dueDate = null;
 
   if (type === "daily") {
-    reminders = {
-      enabled: true,
-      times: ["09:00", "13:00", "18:00", "21:00"] // 4 rappels par jour
-    };
+    const times = [dailyTime1.value, dailyTime2.value, dailyTime3.value, dailyTime4.value]
+      .map(t => (t || "").trim())
+      .filter(Boolean);
+
+    reminders = { enabled: true, times: Array.from(new Set(times)).sort() };
   }
 
   if (type === "weekly") {
-    reminders = {
-      enabled: true,
-      days: [1, 4], // Lundi et Jeudi (1=lundi, 7=dimanche)
-      times: ["18:00"]
-    };
+    const days = Array.from(document.querySelectorAll(".wday:checked"))
+      .map(x => Number(x.value))
+      .filter(n => !isNaN(n));
+
+    const t = (weeklyTime.value || "18:00").trim();
+
+    reminders = { enabled: true, days: days.length ? days : [1], times: [t] };
   }
 
   if (type === "one") {
-    dueDate = todayKey(); // par défaut aujourd’hui (on rendra ça modifiable ensuite)
-    reminders = {
-      enabled: true,
-      times: ["09:00"]
-    };
+    dueDate = (oneDate.value || todayKey()).trim();
+    const t = (oneTime.value || "09:00").trim();
+
+    reminders = { enabled: true, times: [t] };
   }
 
-  // ✅ Enregistrement de la quête avec nouveaux champs
-  state.quests.unshift({
-    id: uid(),
-    title,
-    type,
-    diff: qDiff.value,
-    done: false,
-    createdAt: Date.now(),
 
-    reminders,   // ⬅️ NOUVEAU
-    dueDate      // ⬅️ NOUVEAU (pour les quêtes ponctuelles)
-  });
-
-  qTitle.value = "";
-  addModal.close();
-
-  toast("✅ Quête ajoutée !");
-  renderAll();
-}
 
 
 function toggleDone(id) {
@@ -749,6 +746,7 @@ function seedDemo() {
 openAdd?.addEventListener("click", () => {
   if (!requireAuth("🔒 Connecte-toi pour ajouter une quête.")) return;
   addModal.showModal();
+  updateReminderUI();  // ✅
   qTitle.focus();
 });
 
@@ -858,6 +856,7 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
+
 
 
 
