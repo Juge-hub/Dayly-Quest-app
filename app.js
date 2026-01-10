@@ -3,6 +3,8 @@ console.log("🔥 app.js est bien chargé");
 // =======================
 //  Quêtes & Badges - Login Google + Cloud Sync (Firestore)
 //  + Blocage actions si non connecté
+//  + Badges images + animation
+//  + Rappels (UI) + Timeline (prochains rappels)
 //  + Bouton installer (PWA)
 // =======================
 
@@ -22,7 +24,7 @@ import {
   setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-// ✅ Ton firebaseConfig (UNIQUE, pas de doublon)
+// ✅ Ton firebaseConfig (UNIQUE)
 const firebaseConfig = {
   apiKey: "AIzaSyCaOP76xS-klowPBM9wDbYYQFArt0KMGd8",
   authDomain: "daily-quest-app-5d72a.firebaseapp.com",
@@ -52,6 +54,7 @@ const BADGE_TIERS = [
   { minLevel: 25, name: "Champion" },
   { minLevel: 40, name: "Maître" },
 ];
+
 const BADGE_IMAGES = {
   "Bronze": "bronze.png",
   "Argent": "argent.png",
@@ -125,10 +128,8 @@ function defaultState() {
   };
 }
 
-// État courant (local d’abord)
+// Etat courant (local)
 let state = loadLocalState() ?? defaultState();
-
-// ✅ utilisateur courant
 let currentUser = null;
 
 // =======================
@@ -165,7 +166,7 @@ function toast(message) {
 }
 
 // =======================
-//  Blocage actions si non connecté
+//  Auth guard
 // =======================
 
 function requireAuth(message = "🔒 Connecte-toi pour faire ça.") {
@@ -176,16 +177,8 @@ function requireAuth(message = "🔒 Connecte-toi pour faire ça.") {
   return true;
 }
 
-function setUIEnabled(connected) {
-  // boutons principaux
-  if (openAdd) openAdd.disabled = !connected;
-  if (addQuestBtn) addQuestBtn.disabled = !connected;
-  if (resetProgressBtn) resetProgressBtn.disabled = !connected;
-  if (seedDemoBtn) seedDemoBtn.disabled = !connected;
-}
-
 // =======================
-//  Cloud (Firestore) : charger / sauvegarder
+//  Firestore : load/save
 // =======================
 
 async function loadFromCloud(userId) {
@@ -239,6 +232,15 @@ function applyResets() {
 // =======================
 //  Leveling
 // =======================
+
+function animateBadge() {
+  if (!badgeImg) return;
+  badgeImg.classList.remove("level-up");
+  void badgeImg.offsetWidth; // force reflow
+  badgeImg.classList.add("level-up");
+  setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+}
+
 function addXp(amount) {
   state.xp += amount;
 
@@ -247,16 +249,8 @@ function addXp(amount) {
     if (state.xp >= needed) {
       state.xp -= needed;
       state.level += 1;
-
       toast(`🎉 Niveau ${state.level} ! Badge: ${getBadgeForLevel(state.level)}`);
-
-      // 🔥 Animation du badge
-   if (badgeImg) {
-  badgeImg.classList.remove("level-up"); // reset
-  void badgeImg.offsetWidth;             // force reflow => relance l'anim
-  badgeImg.classList.add("level-up");
-  setTimeout(() => badgeImg.classList.remove("level-up"), 300);
-}
+      animateBadge();
     } else {
       break;
     }
@@ -269,18 +263,25 @@ function addXp(amount) {
 
 const el = (id) => document.getElementById(id);
 
+// Lists
 const dailyList = el("dailyList");
 const weeklyList = el("weeklyList");
 const oneList = el("oneList");
-const timelineList = el("timelineList");
-const timelineEmpty = el("timelineEmpty");
-const timelineCount = el("timelineCount");
-
 
 const dailyEmpty = el("dailyEmpty");
 const weeklyEmpty = el("weeklyEmpty");
 const oneEmpty = el("oneEmpty");
 
+const dailyCount = el("dailyCount");
+const weeklyCount = el("weeklyCount");
+const oneCount = el("oneCount");
+
+// Timeline
+const timelineList = el("timelineList");
+const timelineEmpty = el("timelineEmpty");
+const timelineCount = el("timelineCount");
+
+// Stats
 const badgeName = el("badgeName");
 const badgeHint = el("badgeHint");
 const badgeImg = el("badgeImg");
@@ -289,11 +290,16 @@ const xpEl = el("xp");
 const xpToNextEl = el("xpToNext");
 const progressBar = el("progressBar");
 
-const dailyCount = el("dailyCount");
-const weeklyCount = el("weeklyCount");
-const oneCount = el("oneCount");
+// Modal
+const addModal = el("addModal");
+const openAdd = el("openAdd");
+const closeAdd = el("closeAdd");
+const qTitle = el("qTitle");
+const qType = el("qType");
+const qDiff = el("qDiff");
+const addQuestBtn = el("addQuest");
 
-// Reminder UI
+// Reminder UI (optionnel si pas encore dans ton HTML)
 const reminderDaily = el("reminderDaily");
 const reminderWeekly = el("reminderWeekly");
 const reminderOne = el("reminderOne");
@@ -307,15 +313,6 @@ const weeklyTime = el("weeklyTime");
 const oneDate = el("oneDate");
 const oneTime = el("oneTime");
 
-// Modal
-const addModal = el("addModal");
-const openAdd = el("openAdd");
-const closeAdd = el("closeAdd");
-const qTitle = el("qTitle");
-const qType = el("qType");
-const qDiff = el("qDiff");
-const addQuestBtn = el("addQuest");
-
 // Tools
 const resetProgressBtn = el("resetProgress");
 const seedDemoBtn = el("seedDemo");
@@ -325,48 +322,65 @@ const userLabel = el("userLabel");
 const loginBtn = el("loginBtn");
 const logoutBtn = el("logoutBtn");
 
-// Install UI (PWA)
+// PWA install
 const installBtn = el("installBtn");
 
 // =======================
-//  Render
+//  UI enable/disable
 // =======================
+
+function setUIEnabled(connected) {
+  if (openAdd) openAdd.disabled = !connected;
+  if (addQuestBtn) addQuestBtn.disabled = !connected;
+  if (resetProgressBtn) resetProgressBtn.disabled = !connected;
+  if (seedDemoBtn) seedDemoBtn.disabled = !connected;
+}
+
+// =======================
+//  Reminder UI (form)
+// =======================
+
 function updateReminderUI() {
+  if (!qType) return;
+
   const type = qType.value;
 
-  reminderDaily.style.display = (type === "daily") ? "block" : "none";
-  reminderWeekly.style.display = (type === "weekly") ? "block" : "none";
-  reminderOne.style.display = (type === "one") ? "block" : "none";
+  if (reminderDaily) reminderDaily.style.display = (type === "daily") ? "block" : "none";
+  if (reminderWeekly) reminderWeekly.style.display = (type === "weekly") ? "block" : "none";
+  if (reminderOne) reminderOne.style.display = (type === "one") ? "block" : "none";
 
-  // date par défaut pour "one"
   if (type === "one" && oneDate && !oneDate.value) {
     oneDate.value = todayKey();
   }
 }
 
-qType.addEventListener("change", updateReminderUI);
+qType?.addEventListener("change", updateReminderUI);
+
+// =======================
+//  Render
+// =======================
 
 function renderStats() {
   const badge = getBadgeForLevel(state.level);
 
-  badgeName.textContent = badge;
-  badgeHint.textContent = `Niveau ${state.level}`;
+  if (badgeName) badgeName.textContent = badge;
+  if (badgeHint) badgeHint.textContent = `Niveau ${state.level}`;
 
   if (badgeImg) {
     badgeImg.src = BADGE_IMAGES[badge] || "bronze.png";
     badgeImg.alt = `Badge ${badge}`;
   }
 
-  levelEl.textContent = String(state.level);
-  xpEl.textContent = String(state.xp);
-
+  if (levelEl) levelEl.textContent = String(state.level);
+  if (xpEl) xpEl.textContent = String(state.xp);
 
   const needed = xpNeededForNext(state.level);
   const remaining = Math.max(0, needed - state.xp);
-  xpToNextEl.textContent = String(remaining);
+
+  if (xpToNextEl) xpToNextEl.textContent = String(remaining);
 
   const pct = Math.max(0, Math.min(100, Math.round((state.xp / needed) * 100)));
-  progressBar.style.width = `${pct}%`;
+  if (progressBar) progressBar.style.width = `${pct}%`;
 }
 
 function questItem(q) {
@@ -383,6 +397,7 @@ function questItem(q) {
   checkbox.textContent = q.done ? "✓" : "";
 
   const textWrap = document.createElement("div");
+
   const title = document.createElement("div");
   title.className = "title";
   title.textContent = q.title;
@@ -402,16 +417,23 @@ function questItem(q) {
   t3.className = "tag xp";
   t3.textContent = `+${xpGain} XP`;
 
-  if (q.done) {
-    const t4 = document.createElement("span");
-    t4.className = "tag good";
-    t4.textContent = "Validée";
-    meta.appendChild(t4);
-  }
-
   meta.appendChild(t1);
   meta.appendChild(t2);
   meta.appendChild(t3);
+
+  if (q.type === "one" && q.dueDate) {
+    const t4 = document.createElement("span");
+    t4.className = "tag";
+    t4.textContent = `📅 ${q.dueDate}`;
+    meta.appendChild(t4);
+  }
+
+  if (q.done) {
+    const t5 = document.createElement("span");
+    t5.className = "tag good";
+    t5.textContent = "Validée";
+    meta.appendChild(t5);
+  }
 
   textWrap.appendChild(title);
   textWrap.appendChild(meta);
@@ -425,7 +447,7 @@ function questItem(q) {
   const doneBtn = document.createElement("button");
   doneBtn.className = "small-btn done";
   doneBtn.textContent = q.done ? "Annuler" : "Valider";
-  doneBtn.disabled = !currentUser; // 🔒 bloqué si non connecté
+  doneBtn.disabled = !currentUser;
   doneBtn.addEventListener("click", () => {
     if (!requireAuth("🔒 Connecte-toi pour valider une quête.")) return;
     toggleDone(q.id);
@@ -434,7 +456,7 @@ function questItem(q) {
   const delBtn = document.createElement("button");
   delBtn.className = "small-btn del";
   delBtn.textContent = "Supprimer";
-  delBtn.disabled = !currentUser; // 🔒 bloqué si non connecté
+  delBtn.disabled = !currentUser;
   delBtn.addEventListener("click", () => {
     if (!requireAuth("🔒 Connecte-toi pour supprimer une quête.")) return;
     removeQuest(q.id);
@@ -450,6 +472,8 @@ function questItem(q) {
 }
 
 function renderLists() {
+  if (!dailyList || !weeklyList || !oneList) return;
+
   dailyList.innerHTML = "";
   weeklyList.innerHTML = "";
   oneList.innerHTML = "";
@@ -458,13 +482,13 @@ function renderLists() {
   const w = state.quests.filter(q => q.type === "weekly");
   const o = state.quests.filter(q => q.type === "one");
 
-  dailyCount.textContent = String(d.length);
-  weeklyCount.textContent = String(w.length);
-  oneCount.textContent = String(o.length);
+  if (dailyCount) dailyCount.textContent = String(d.length);
+  if (weeklyCount) weeklyCount.textContent = String(w.length);
+  if (oneCount) oneCount.textContent = String(o.length);
 
-  dailyEmpty.style.display = d.length ? "none" : "block";
-  weeklyEmpty.style.display = w.length ? "none" : "block";
-  oneEmpty.style.display = o.length ? "none" : "block";
+  if (dailyEmpty) dailyEmpty.style.display = d.length ? "none" : "block";
+  if (weeklyEmpty) weeklyEmpty.style.display = w.length ? "none" : "block";
+  if (oneEmpty) oneEmpty.style.display = o.length ? "none" : "block";
 
   for (const q of d) dailyList.appendChild(questItem(q));
   for (const q of w) weeklyList.appendChild(questItem(q));
@@ -475,6 +499,11 @@ function persistAndMaybeCloud() {
   saveLocalState(state);
   saveToCloudDebounced();
 }
+
+// =======================
+//  Timeline helpers
+// =======================
+
 function parseHHMM(hhmm) {
   const [h, m] = String(hhmm || "00:00").split(":").map(Number);
   return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
@@ -495,53 +524,39 @@ function fmtTimeFR(d) {
   return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
-// Retourne une liste d'événements "à venir" pour une quête (max 1 prochain event par quête, simple)
 function nextEventForQuest(q, now = new Date()) {
   const r = q.reminders || { enabled: false };
   if (!r.enabled) return null;
 
-  // DAILY: prochain time aujourd'hui sinon demain
   if (q.type === "daily") {
     const times = Array.isArray(r.times) ? r.times : [];
     if (!times.length) return null;
 
-    // trie times
     const sorted = times.slice().sort();
     for (const t of sorted) {
       const dt = makeDateAtTime(now, t);
-      if (dt > now) {
-        return { dt, q };
-      }
+      if (dt > now) return { dt, q };
     }
-    // sinon demain au premier créneau
+
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return { dt: makeDateAtTime(tomorrow, sorted[0]), q };
   }
 
-  // WEEKLY: prochain jour de la semaine + heure
   if (q.type === "weekly") {
     const days = Array.isArray(r.days) ? r.days : [];
     const times = Array.isArray(r.times) ? r.times : [];
     if (!days.length || !times.length) return null;
 
     const sortedTimes = times.slice().sort();
-    const nowDay = (() => {
-      const js = now.getDay(); // 0=dimanche
-      return js === 0 ? 7 : js; // 1=lundi ... 7=dimanche
-    })();
-
-    // Cherche le prochain (jour,heure) dans les 7 prochains jours
     let best = null;
 
     for (let add = 0; add <= 7; add++) {
       const d = new Date(now);
       d.setDate(d.getDate() + add);
 
-      const dDay = (() => {
-        const js = d.getDay();
-        return js === 0 ? 7 : js;
-      })();
+      const js = d.getDay(); // 0 dim
+      const dDay = js === 0 ? 7 : js;
 
       if (!days.includes(dDay)) continue;
 
@@ -549,31 +564,25 @@ function nextEventForQuest(q, now = new Date()) {
         const dt = makeDateAtTime(d, t);
         if (dt > now && (!best || dt < best.dt)) best = { dt, q };
       }
-
-      // Si on est sur un jour futur, le premier créneau suffit souvent
-      // mais on garde le "best" pour être exact.
     }
 
     return best;
   }
 
-  // ONE: dueDate + time(s)
   if (q.type === "one") {
     if (!q.dueDate) return null;
+
     const times = Array.isArray(r.times) ? r.times : ["09:00"];
     const sorted = times.slice().sort();
 
-    // dueDate est "YYYY-MM-DD"
     const base = new Date(`${q.dueDate}T00:00:00`);
     if (isNaN(base.getTime())) return null;
 
-    // prochain créneau sur la dueDate
     for (const t of sorted) {
       const dt = makeDateAtTime(base, t);
       if (dt > now) return { dt, q };
     }
 
-    // Si toutes les heures de la dueDate sont passées → on ne rappelle plus
     return null;
   }
 
@@ -584,16 +593,14 @@ function renderTimeline() {
   if (!timelineList || !timelineEmpty || !timelineCount) return;
 
   const now = new Date();
-
   const events = state.quests
     .map(q => nextEventForQuest(q, now))
     .filter(Boolean)
     .sort((a, b) => a.dt - b.dt)
-    .slice(0, 12); // top 12 prochains
+    .slice(0, 12);
 
   timelineCount.textContent = String(events.length);
   timelineList.innerHTML = "";
-
   timelineEmpty.style.display = events.length ? "none" : "block";
 
   for (const ev of events) {
@@ -620,19 +627,24 @@ function renderTimeline() {
 
     row.appendChild(left);
     row.appendChild(right);
+
     timelineList.appendChild(row);
   }
 }
+
 function renderAll() {
   applyResets();
   renderStats();
   renderLists();
-  renderTimeline();      // ✅ NOUVEAU
+  renderTimeline();
   persistAndMaybeCloud();
 }
+
+// rafraîchit la timeline toutes les minutes
 setInterval(() => {
   try { renderTimeline(); } catch {}
 }, 60_000);
+
 // =======================
 //  Actions
 // =======================
@@ -640,20 +652,26 @@ setInterval(() => {
 function addQuest() {
   if (!requireAuth("🔒 Connecte-toi pour ajouter une quête.")) return;
 
-  const title = (qTitle.value || "").trim();
+  const title = (qTitle?.value || "").trim();
   if (!title) return;
 
-  const type = qType.value;
-  // 🧠 Récupération des rappels depuis le formulaire
-  let reminders = { enabled: true };
+  const type = qType?.value || "daily";
+  const diff = qDiff?.value || "easy";
+
+  // Par défaut : rappels OFF si le bloc n'existe pas dans l'HTML
+  let reminders = { enabled: false };
   let dueDate = null;
 
+  // Si tu as bien créé les champs HTML, on lit les valeurs :
   if (type === "daily") {
-    const times = [dailyTime1.value, dailyTime2.value, dailyTime3.value, dailyTime4.value]
+    const times = [dailyTime1?.value, dailyTime2?.value, dailyTime3?.value, dailyTime4?.value]
       .map(t => (t || "").trim())
       .filter(Boolean);
 
-    reminders = { enabled: true, times: Array.from(new Set(times)).sort() };
+    reminders = {
+      enabled: true,
+      times: Array.from(new Set(times)).sort()
+    };
   }
 
   if (type === "weekly") {
@@ -661,20 +679,43 @@ function addQuest() {
       .map(x => Number(x.value))
       .filter(n => !isNaN(n));
 
-    const t = (weeklyTime.value || "18:00").trim();
+    const t = (weeklyTime?.value || "18:00").trim();
 
-    reminders = { enabled: true, days: days.length ? days : [1], times: [t] };
+    reminders = {
+      enabled: true,
+      days: days.length ? days : [1], // lundi par défaut
+      times: [t]
+    };
   }
 
   if (type === "one") {
-    dueDate = (oneDate.value || todayKey()).trim();
-    const t = (oneTime.value || "09:00").trim();
+    dueDate = (oneDate?.value || todayKey()).trim();
+    const t = (oneTime?.value || "09:00").trim();
 
-    reminders = { enabled: true, times: [t] };
+    reminders = {
+      enabled: true,
+      times: [t]
+    };
   }
 
+  // ✅ ICI : on AJOUTE VRAIMENT la quête (c’est ça qui te manquait)
+  state.quests.unshift({
+    id: uid(),
+    title,
+    type,
+    diff,
+    done: false,
+    createdAt: Date.now(),
+    dueDate,     // null si pas one
+    reminders    // objet
+  });
 
+  if (qTitle) qTitle.value = "";
+  addModal?.close();
 
+  toast("✅ Quête ajoutée !");
+  renderAll();
+}
 
 function toggleDone(id) {
   if (!requireAuth("🔒 Connecte-toi pour valider une quête.")) return;
@@ -717,11 +758,37 @@ function seedDemo() {
   if (!requireAuth("🔒 Connecte-toi pour ajouter des quêtes d’exemple.")) return;
 
   const examples = [
-    { title: "Boire 2 verres d’eau", type: "daily", diff: "easy" },
-    { title: "10 min de marche", type: "daily", diff: "medium" },
-    { title: "Ranger 15 minutes", type: "weekly", diff: "medium" },
-    { title: "Sport (séance complète)", type: "weekly", diff: "hard" },
-    { title: "Appeler quelqu’un de la famille", type: "one", diff: "easy" },
+    {
+      title: "Boire 2 verres d’eau",
+      type: "daily",
+      diff: "easy",
+      reminders: { enabled: true, times: ["09:00", "13:00", "18:00", "21:00"] }
+    },
+    {
+      title: "10 min de marche",
+      type: "daily",
+      diff: "medium",
+      reminders: { enabled: true, times: ["12:30"] }
+    },
+    {
+      title: "Ranger 15 minutes",
+      type: "weekly",
+      diff: "medium",
+      reminders: { enabled: true, days: [1, 4], times: ["18:00"] }
+    },
+    {
+      title: "Sport (séance complète)",
+      type: "weekly",
+      diff: "hard",
+      reminders: { enabled: true, days: [6], times: ["10:00"] } // samedi
+    },
+    {
+      title: "Appeler quelqu’un de la famille",
+      type: "one",
+      diff: "easy",
+      dueDate: todayKey(),
+      reminders: { enabled: true, times: ["19:30"] }
+    },
   ];
 
   for (const e of examples) {
@@ -732,6 +799,8 @@ function seedDemo() {
       diff: e.diff,
       done: false,
       createdAt: Date.now(),
+      dueDate: e.dueDate ?? null,
+      reminders: e.reminders ?? { enabled: false }
     });
   }
 
@@ -745,12 +814,12 @@ function seedDemo() {
 
 openAdd?.addEventListener("click", () => {
   if (!requireAuth("🔒 Connecte-toi pour ajouter une quête.")) return;
-  addModal.showModal();
-  updateReminderUI();  // ✅
-  qTitle.focus();
+  addModal?.showModal();
+  updateReminderUI();
+  qTitle?.focus();
 });
 
-closeAdd?.addEventListener("click", () => addModal.close());
+closeAdd?.addEventListener("click", () => addModal?.close());
 
 addQuestBtn?.addEventListener("click", (e) => {
   e.preventDefault();
@@ -759,6 +828,7 @@ addQuestBtn?.addEventListener("click", (e) => {
 
 resetProgressBtn?.addEventListener("click", resetProgress);
 seedDemoBtn?.addEventListener("click", seedDemo);
+
 // =======================
 //  Auth events
 // =======================
@@ -787,26 +857,22 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user || null;
 
   if (!currentUser) {
-    userLabel.textContent = "Non connecté";
-    loginBtn.style.display = "inline-block";
-    logoutBtn.style.display = "none";
+    if (userLabel) userLabel.textContent = "Non connecté";
+    if (loginBtn) loginBtn.style.display = "inline-block";
+    if (logoutBtn) logoutBtn.style.display = "none";
 
-    // 🔒 UI bloquée
     setUIEnabled(false);
 
-    // Affichage local (lecture OK) mais actions bloquées
     renderAll();
     return;
   }
 
-  userLabel.textContent = `Connecté : ${currentUser.displayName ?? "Utilisateur"}`;
-  loginBtn.style.display = "none";
-  logoutBtn.style.display = "inline-block";
+  if (userLabel) userLabel.textContent = `Connecté : ${currentUser.displayName ?? "Utilisateur"}`;
+  if (loginBtn) loginBtn.style.display = "none";
+  if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-  // ✅ UI débloquée
   setUIEnabled(true);
 
-  // Charger depuis le cloud
   try {
     const cloudState = await loadFromCloud(currentUser.uid);
     state = cloudState ?? defaultState();
@@ -818,7 +884,7 @@ onAuthStateChanged(auth, async (user) => {
     toast("⚠️ Impossible de charger le cloud (voir console)");
     renderAll();
   }
-}); // ✅ FIN onAuthStateChanged (très important: c'est bien `});`)
+}); // ✅ important : bien `});`
 
 // =======================
 //  Start
@@ -854,25 +920,14 @@ installBtn?.addEventListener("click", async () => {
     toast("❌ Installation refusée");
   }
 
-  // 🔧 IMPORTANT : on nettoie après le prompt
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
 
-// (optionnel mais propre)
+// optionnel mais propre
 window.addEventListener("appinstalled", () => {
   console.log("🎉 App installée (event appinstalled)");
   toast("🎉 Application installée !");
   if (installBtn) installBtn.style.display = "none";
   deferredPrompt = null;
 });
-// =======================
-//  Effet visuel badge (sécurisé)
-// =======================
-
-if (badgeImg) {
-  badgeImg.classList.add("level-up");
-  setTimeout(() => {
-    badgeImg.classList.remove("level-up");
-  }, 300);
-}
