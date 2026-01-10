@@ -293,6 +293,20 @@ const dailyCount = el("dailyCount");
 const weeklyCount = el("weeklyCount");
 const oneCount = el("oneCount");
 
+// Reminder UI
+const reminderDaily = el("reminderDaily");
+const reminderWeekly = el("reminderWeekly");
+const reminderOne = el("reminderOne");
+
+const dailyTime1 = el("dailyTime1");
+const dailyTime2 = el("dailyTime2");
+const dailyTime3 = el("dailyTime3");
+const dailyTime4 = el("dailyTime4");
+
+const weeklyTime = el("weeklyTime");
+const oneDate = el("oneDate");
+const oneTime = el("oneTime");
+
 // Modal
 const addModal = el("addModal");
 const openAdd = el("openAdd");
@@ -844,6 +858,7 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
+
 
 
 
