@@ -265,7 +265,14 @@ input, select{
   width: 72px;
   height: 72px;
   object-fit: contain;
+  transition: transform 0.25s ease, filter 0.25s ease;
 }
+
+.badge-img.level-up {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 16px gold);
+}
+
 .badge-wrap {
   display: flex;
   align-items: center;
@@ -275,10 +282,6 @@ input, select{
   transition: transform 0.25s ease, filter 0.25s ease;
 }
 
-.badge-img.level-up {
-  transform: scale(1.2);
-  filter: drop-shadow(0 0 16px gold);
-}
 
 
 
