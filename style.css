@@ -262,12 +262,16 @@ input, select{
   gap:12px;
 }
 
-.badge-img{
-  width:54px;
-  height:54px;
-  object-fit:contain;
-  filter: drop-shadow(0 8px 16px rgba(0,0,0,.45));
+.badge-img {
+  transition: transform 0.25s ease, filter 0.25s ease;
 }
+
+.badge-img.level-up {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 16px gold);
+}
+
+
 
 
 
