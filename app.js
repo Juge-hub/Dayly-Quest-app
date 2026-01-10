@@ -794,6 +794,7 @@ onAuthStateChanged(auth, async (user) => {
     // 🔒 UI bloquée
     setUIEnabled(false);
 
+    // Affichage local (lecture OK) mais actions bloquées
     renderAll();
     return;
   }
@@ -817,12 +818,11 @@ onAuthStateChanged(auth, async (user) => {
     toast("⚠️ Impossible de charger le cloud (voir console)");
     renderAll();
   }
-});
+}); // ✅ FIN onAuthStateChanged (très important: c'est bien `});`)
 
 // =======================
 //  Start
 // =======================
-
 renderAll();
 
 // =======================
@@ -866,12 +866,13 @@ window.addEventListener("appinstalled", () => {
   if (installBtn) installBtn.style.display = "none";
   deferredPrompt = null;
 });
-
 // =======================
 //  Effet visuel badge (sécurisé)
 // =======================
 
 if (badgeImg) {
   badgeImg.classList.add("level-up");
-  setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+  setTimeout(() => {
+    badgeImg.classList.remove("level-up");
+  }, 300);
 }
