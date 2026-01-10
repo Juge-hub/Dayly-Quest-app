@@ -272,6 +272,10 @@ const el = (id) => document.getElementById(id);
 const dailyList = el("dailyList");
 const weeklyList = el("weeklyList");
 const oneList = el("oneList");
+const timelineList = el("timelineList");
+const timelineEmpty = el("timelineEmpty");
+const timelineCount = el("timelineCount");
+
 
 const dailyEmpty = el("dailyEmpty");
 const weeklyEmpty = el("weeklyEmpty");
@@ -443,14 +447,164 @@ function persistAndMaybeCloud() {
   saveLocalState(state);
   saveToCloudDebounced();
 }
+function parseHHMM(hhmm) {
+  const [h, m] = String(hhmm || "00:00").split(":").map(Number);
+  return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
+}
 
+function makeDateAtTime(baseDate, hhmm) {
+  const d = new Date(baseDate);
+  const { h, m } = parseHHMM(hhmm);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function fmtDateFR(d) {
+  return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
+}
+
+function fmtTimeFR(d) {
+  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Retourne une liste d'événements "à venir" pour une quête (max 1 prochain event par quête, simple)
+function nextEventForQuest(q, now = new Date()) {
+  const r = q.reminders || { enabled: false };
+  if (!r.enabled) return null;
+
+  // DAILY: prochain time aujourd'hui sinon demain
+  if (q.type === "daily") {
+    const times = Array.isArray(r.times) ? r.times : [];
+    if (!times.length) return null;
+
+    // trie times
+    const sorted = times.slice().sort();
+    for (const t of sorted) {
+      const dt = makeDateAtTime(now, t);
+      if (dt > now) {
+        return { dt, q };
+      }
+    }
+    // sinon demain au premier créneau
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return { dt: makeDateAtTime(tomorrow, sorted[0]), q };
+  }
+
+  // WEEKLY: prochain jour de la semaine + heure
+  if (q.type === "weekly") {
+    const days = Array.isArray(r.days) ? r.days : [];
+    const times = Array.isArray(r.times) ? r.times : [];
+    if (!days.length || !times.length) return null;
+
+    const sortedTimes = times.slice().sort();
+    const nowDay = (() => {
+      const js = now.getDay(); // 0=dimanche
+      return js === 0 ? 7 : js; // 1=lundi ... 7=dimanche
+    })();
+
+    // Cherche le prochain (jour,heure) dans les 7 prochains jours
+    let best = null;
+
+    for (let add = 0; add <= 7; add++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() + add);
+
+      const dDay = (() => {
+        const js = d.getDay();
+        return js === 0 ? 7 : js;
+      })();
+
+      if (!days.includes(dDay)) continue;
+
+      for (const t of sortedTimes) {
+        const dt = makeDateAtTime(d, t);
+        if (dt > now && (!best || dt < best.dt)) best = { dt, q };
+      }
+
+      // Si on est sur un jour futur, le premier créneau suffit souvent
+      // mais on garde le "best" pour être exact.
+    }
+
+    return best;
+  }
+
+  // ONE: dueDate + time(s)
+  if (q.type === "one") {
+    if (!q.dueDate) return null;
+    const times = Array.isArray(r.times) ? r.times : ["09:00"];
+    const sorted = times.slice().sort();
+
+    // dueDate est "YYYY-MM-DD"
+    const base = new Date(`${q.dueDate}T00:00:00`);
+    if (isNaN(base.getTime())) return null;
+
+    // prochain créneau sur la dueDate
+    for (const t of sorted) {
+      const dt = makeDateAtTime(base, t);
+      if (dt > now) return { dt, q };
+    }
+
+    // Si toutes les heures de la dueDate sont passées → on ne rappelle plus
+    return null;
+  }
+
+  return null;
+}
+
+function renderTimeline() {
+  if (!timelineList || !timelineEmpty || !timelineCount) return;
+
+  const now = new Date();
+
+  const events = state.quests
+    .map(q => nextEventForQuest(q, now))
+    .filter(Boolean)
+    .sort((a, b) => a.dt - b.dt)
+    .slice(0, 12); // top 12 prochains
+
+  timelineCount.textContent = String(events.length);
+  timelineList.innerHTML = "";
+
+  timelineEmpty.style.display = events.length ? "none" : "block";
+
+  for (const ev of events) {
+    const row = document.createElement("div");
+    row.className = "tl-item";
+
+    const left = document.createElement("div");
+    left.className = "tl-left";
+
+    const title = document.createElement("div");
+    title.className = "tl-title";
+    title.textContent = ev.q.title;
+
+    const meta = document.createElement("div");
+    meta.className = "tl-meta";
+    meta.textContent = `${typeLabel(ev.q.type)} • ${diffLabel(ev.q.diff)} • ${fmtDateFR(ev.dt)}`;
+
+    left.appendChild(title);
+    left.appendChild(meta);
+
+    const right = document.createElement("div");
+    right.className = "tl-time";
+    right.textContent = fmtTimeFR(ev.dt);
+
+    row.appendChild(left);
+    row.appendChild(right);
+    timelineList.appendChild(row);
+  }
+}
 function renderAll() {
   applyResets();
   renderStats();
   renderLists();
+  renderTimeline();      // ✅ NOUVEAU
   persistAndMaybeCloud();
 }
-
+setInterval(() => {
+  try { renderTimeline(); } catch {}
+}, 60_000);
 // =======================
 //  Actions
 // =======================
@@ -690,6 +844,7 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
+
 
 
 
