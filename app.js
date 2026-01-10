@@ -856,6 +856,7 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
+}
 
 
 
