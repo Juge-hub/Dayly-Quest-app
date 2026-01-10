@@ -39,3 +39,6 @@ self.addEventListener("fetch", event => {
     })
   );
 });
+badgeImg.classList.add("level-up");
+setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+
