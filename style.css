@@ -281,6 +281,42 @@ input, select{
 .badge-img {
   transition: transform 0.25s ease, filter 0.25s ease;
 }
+.timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.tl-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+
+.tl-left {
+  display: grid;
+  gap: 2px;
+}
+
+.tl-title {
+  font-weight: 750;
+}
+
+.tl-meta {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.tl-time {
+  font-weight: 800;
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
 
 
 
