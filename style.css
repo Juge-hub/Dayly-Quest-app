@@ -316,6 +316,32 @@ input, select{
   white-space: nowrap;
   opacity: 0.95;
 }
+.reminder-box{
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+
+.days{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin: 10px 0;
+}
+
+.days label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+  cursor:pointer;
+}
+
 
 
 
