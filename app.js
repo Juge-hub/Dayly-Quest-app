@@ -848,7 +848,55 @@ installBtn?.addEventListener("click", async () => {
   if (outcome === "accepted") {
     console.log("✅ Application installée");
     toast("✅ Application installée !");
+  // Charger depuis le cloud
+  try {
+    const cloudState = await loadFromCloud(currentUser.uid);
+    state = cloudState ?? defaultState();
+    saveLocalState(state);
+    toast("☁️ Données synchronisées !");
+    renderAll();
+  } catch (e) {
+    console.error("Erreur chargement cloud:", e);
+    toast("⚠️ Impossible de charger le cloud (voir console)");
+    renderAll();
+  }
+});
+
+// Start
+renderAll();
+
+// =======================
+//  PWA Installation (Bouton Installer)
+// =======================
+
+let deferredPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.style.display = "inline-block";
+});
+
+installBtn?.addEventListener("click", async () => {
+  if (!deferredPrompt) {
+    toast("ℹ️ Installation non disponible sur ce navigateur.");
+    return;
+  }
+
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+
+  if (outcome === "accepted") {
+    console.log("✅ Application installée");
+    toast("✅ Application installée !");
   } else {
     console.log("❌ Installation refusée");
     toast("❌ Installation refusée");
-  }
+  }window.addEventListener("appinstalled", () => {
+  console.log("🎉 App installée (event appinstalled)");
+  toast("🎉 App installée !");
+  if (installBtn) installBtn.style.display = "none";
+  deferredPrompt = null;
+});
+
+
