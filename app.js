@@ -251,11 +251,12 @@ function addXp(amount) {
       toast(`🎉 Niveau ${state.level} ! Badge: ${getBadgeForLevel(state.level)}`);
 
       // 🔥 Animation du badge
-      if (badgeImg) {
-        badgeImg.classList.add("level-up");
-        setTimeout(() => badgeImg.classList.remove("level-up"), 300);
-      }
-
+   if (badgeImg) {
+  badgeImg.classList.remove("level-up"); // reset
+  void badgeImg.offsetWidth;             // force reflow => relance l'anim
+  badgeImg.classList.add("level-up");
+  setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+}
     } else {
       break;
     }
@@ -460,13 +461,46 @@ function addQuest() {
   const title = (qTitle.value || "").trim();
   if (!title) return;
 
+  const type = qType.value;
+
+  // 🧠 Modélisation des rappels selon le type
+  let reminders = { enabled: false };
+  let dueDate = null;
+
+  if (type === "daily") {
+    reminders = {
+      enabled: true,
+      times: ["09:00", "13:00", "18:00", "21:00"] // 4 rappels par jour
+    };
+  }
+
+  if (type === "weekly") {
+    reminders = {
+      enabled: true,
+      days: [1, 4], // Lundi et Jeudi (1=lundi, 7=dimanche)
+      times: ["18:00"]
+    };
+  }
+
+  if (type === "one") {
+    dueDate = todayKey(); // par défaut aujourd’hui (on rendra ça modifiable ensuite)
+    reminders = {
+      enabled: true,
+      times: ["09:00"]
+    };
+  }
+
+  // ✅ Enregistrement de la quête avec nouveaux champs
   state.quests.unshift({
     id: uid(),
     title,
-    type: qType.value,
+    type,
     diff: qDiff.value,
     done: false,
     createdAt: Date.now(),
+
+    reminders,   // ⬅️ NOUVEAU
+    dueDate      // ⬅️ NOUVEAU (pour les quêtes ponctuelles)
   });
 
   qTitle.value = "";
@@ -475,6 +509,7 @@ function addQuest() {
   toast("✅ Quête ajoutée !");
   renderAll();
 }
+
 
 function toggleDone(id) {
   if (!requireAuth("🔒 Connecte-toi pour valider une quête.")) return;
@@ -655,9 +690,6 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
-// Effet visuel quand le badge change
-badgeImg.classList.add("level-up");
-setTimeout(() => badgeImg.classList.remove("level-up"), 300);
 
 
 
