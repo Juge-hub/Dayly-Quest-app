@@ -892,11 +892,28 @@ installBtn?.addEventListener("click", async () => {
   } else {
     console.log("❌ Installation refusée");
     toast("❌ Installation refusée");
-  }window.addEventListener("appinstalled", () => {
+  }
+
+  // 🔧 IMPORTANT : on nettoie après le prompt
+  deferredPrompt = null;
+  if (installBtn) installBtn.style.display = "none";
+});
+
+// (optionnel mais propre)
+window.addEventListener("appinstalled", () => {
   console.log("🎉 App installée (event appinstalled)");
-  toast("🎉 App installée !");
+  toast("🎉 Application installée !");
   if (installBtn) installBtn.style.display = "none";
   deferredPrompt = null;
 });
+
+// =======================
+//  Effet visuel badge (sécurisé)
+// =======================
+
+if (badgeImg) {
+  badgeImg.classList.add("level-up");
+  setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+}
 
 
