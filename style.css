@@ -261,7 +261,16 @@ input, select{
   align-items:center;
   gap:12px;
 }
-
+.badge-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+.badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .badge-img {
   transition: transform 0.25s ease, filter 0.25s ease;
 }
@@ -270,6 +279,7 @@ input, select{
   transform: scale(1.2);
   filter: drop-shadow(0 0 16px gold);
 }
+
 
 
 
