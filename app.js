@@ -648,4 +648,8 @@ installBtn?.addEventListener("click", async () => {
   deferredPrompt = null;
   if (installBtn) installBtn.style.display = "none";
 });
+// Effet visuel quand le badge change
+badgeImg.classList.add("level-up");
+setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+
 
