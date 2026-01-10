@@ -239,7 +239,6 @@ function applyResets() {
 // =======================
 //  Leveling
 // =======================
-
 function addXp(amount) {
   state.xp += amount;
 
@@ -248,7 +247,15 @@ function addXp(amount) {
     if (state.xp >= needed) {
       state.xp -= needed;
       state.level += 1;
+
       toast(`🎉 Niveau ${state.level} ! Badge: ${getBadgeForLevel(state.level)}`);
+
+      // 🔥 Animation du badge
+      if (badgeImg) {
+        badgeImg.classList.add("level-up");
+        setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+      }
+
     } else {
       break;
     }
@@ -651,5 +658,6 @@ installBtn?.addEventListener("click", async () => {
 // Effet visuel quand le badge change
 badgeImg.classList.add("level-up");
 setTimeout(() => badgeImg.classList.remove("level-up"), 300);
+
 
 
